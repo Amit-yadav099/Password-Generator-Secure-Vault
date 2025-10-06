@@ -8,10 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import PasswordGenerator from '@/components/PasswordGenerator';
 import VaultItemForm from '@/components/VaultItemForm';
 import VaultItemCard from '@/components/VaultItemCard';
-import { Search, Plus, LogOut, Shield } from 'lucide-react';
+import { Search, LogOut, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface VaultItem{
+interface VaultItem {
   id: string;
   title: string;
   username?: string;
@@ -21,69 +21,102 @@ interface VaultItem{
   createdAt: string;
 }
 
-export default function VaultPage(){
-    const router=useRouter();
-    const [vaultItems,setVaultItems]=useState<VaultItem[]>([]);
-    const [searchTerm,setSearchTerm]=useState('');
-    const [showGenerator,setShowGenerator]=useState(false);
-    const [generatedPassword,setGeneratedPassword]=useState('');
+// Custom hook for vault persistence
+const useVaultStorage = () => {
+  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
 
-    // check authentication
-    useEffect(()=>{
-        const token=localStorage.getItem('authtoken');
-        if(!token){
-            router.push('/auth');
-        }
-    },[router]);
-
-    // after the authentication, we need to load all the vault items on the UI
-    useEffect(()=>{
-    // intially with the MOCK data
-    // then we need to replace it with the actual API call
-    const mockItems:VaultItem[]=[
-        {
-        id: '1',
-        title: 'Gmail',
-        username: 'user@gmail.com',
-        password: 'StrongPass123!',
-        website: 'https://gmail.com',
-        notes: 'Personal email account',
-        createdAt: new Date().toISOString()
+  // Load from localStorage on initial render
+  useEffect(() => {
+    const savedItems = localStorage.getItem('vaultItems');
+    if (savedItems) {
+      try {
+        setVaultItems(JSON.parse(savedItems));
+      } catch (error) {
+        console.error('Error parsing vault items:', error);
       }
-     ];
-     setVaultItems(mockItems);
-    },[]);
+    }
+  }, []);
 
-const handleSaveItem = (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
+  // Save to localStorage whenever vaultItems change
+  const updateVaultItems = (newItems: VaultItem[]) => {
+    setVaultItems(newItems);
+    localStorage.setItem('vaultItems', JSON.stringify(newItems));
+  };
+
+  const handleSaveItem = (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
     const newItem: VaultItem = {
       ...itemData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString()
     };
-    setVaultItems(prev => [newItem, ...prev]);
+    updateVaultItems([newItem, ...vaultItems]);
     toast.success('Item saved to vault!');
   };
 
-
   const handleEditItem = (id: string, updates: Partial<VaultItem>) => {
-    setVaultItems(prev => 
-      prev.map(item => item.id === id ? { ...item, ...updates } : item)
+    const updatedItems = vaultItems.map(item => 
+      item.id === id ? { ...item, ...updates } : item
     );
+    updateVaultItems(updatedItems);
     toast.success('Item updated!');
   };
 
   const handleDeleteItem = (id: string) => {
-    setVaultItems(prev => prev.filter(item => item.id !== id));
+    const filteredItems = vaultItems.filter(item => item.id !== id);
+    updateVaultItems(filteredItems);
     toast.success('Item deleted!');
   };
 
+  return {
+    vaultItems,
+    handleSaveItem,
+    handleEditItem,
+    handleDeleteItem
+  };
+};
+
+export default function VaultPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  
+  // Use the persistent storage hook
+  const { 
+    vaultItems, 
+    handleSaveItem, 
+    handleEditItem, 
+    handleDeleteItem 
+  } = useVaultStorage();
+
+  // Check authentication - FIXED: All hooks declared at top level
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    console.log('Token found:', token);
+    if (!token) {
+      console.log('Token is not present');
+      router.push('/auth');
+    } else {
+      setIsLoading(false);
+    }
+  }, [router]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   const handleGeneratePassword = () => {
-    // This will be called by the VaultItemForm to get a generated password
     return generatedPassword;
   };
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('vaultItems'); // Optional: clear vault data on logout
     router.push('/auth');
   };
 
@@ -93,8 +126,8 @@ const handleSaveItem = (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
     item.website?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return(
- <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <div className="container mx-auto px-4 py-4">
@@ -122,8 +155,7 @@ const handleSaveItem = (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Generator & Add Form */}
           <div className="lg:col-span-1 space-y-6">
-            <PasswordGenerator />
-            
+            <PasswordGenerator onPasswordGenerate={setGeneratedPassword} />
             <VaultItemForm 
               onSave={handleSaveItem}
               onGeneratePassword={handleGeneratePassword}

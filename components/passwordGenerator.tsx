@@ -11,7 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {Copy, RefreshCw, Check} from 'lucide-react';
 import {toast} from 'sonner';
 
-export default function PasswordGenerator(){
+interface PasswordGeneratorProps {
+  onPasswordGenerate?: (password: string) => void;
+}
+
+export default function PasswordGenerator({onPasswordGenerate}:PasswordGeneratorProps){
     const [password,setPassword]=useState('');
     const [length,setLength]=useState(16);
     const [includeUppercase,setIncludeUppercase]=useState(true);
@@ -43,8 +47,9 @@ export default function PasswordGenerator(){
     newPassword+=characters[randomIndex];
    }
    setPassword(newPassword);
+   onPasswordGenerate?.(newPassword);
    }
-   ,[length,includeUppercase,includeLowercase,includeNumbers,includeSymbols]);
+   ,[length,includeUppercase,includeLowercase,includeNumbers,includeSymbols,onPasswordGenerate]);
 
 
    const copyToClipboard= async() => {

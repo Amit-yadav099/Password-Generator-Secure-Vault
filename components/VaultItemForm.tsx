@@ -1,6 +1,6 @@
-'use-client';
+'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,38 +9,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Save, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 interface VaultItemFormProps {
-    onSave:(item:any)=>void;
-    onGeneratePassword:()=>string;
+  onSave: (item: any) => void;
+  onGeneratePassword: () => string;
 }
 
-export default function VaultItemForm({onSave,onGeneratePassword}:VaultItemFormProps){
-    const [formData,setFormData]=useState({
-        title:'',
-        userName:'',
-        password:'',
-        website:'',
-        notes:''
-    });
+export default function VaultItemForm({ onSave, onGeneratePassword }: VaultItemFormProps) {
+  const titleRef = useRef<HTMLInputElement>(null);
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const websiteRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-    const [showPassword,setShowPassword] =useState(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const handleSubmit=(e: React.FormEvent)=>{
-        e.preventDefault();
-        if(!formData.title){
-            alert('Title is required');
-            return;
-        }
-        onSave(formData);
-        setFormData({title:'', userName:'', password:'', website:'', notes:''});
+    const formData = {
+      title: titleRef.current?.value || '',
+      username: usernameRef.current?.value || '',
+      password: passwordRef.current?.value || '',
+      website: websiteRef.current?.value || '',
+      notes: notesRef.current?.value || ''
     };
 
-    const handleGeneratePassword=()=>{
-        const newPassword=onGeneratePassword();
-        setFormData(prev=>({...prev, password:newPassword}));
-    };
+    if (!formData.title) {
+      alert('Title is required');
+      return;
+    }
+    
+    onSave(formData);
+    
+    // Reset form
+    if (titleRef.current) titleRef.current.value = '';
+    if (usernameRef.current) usernameRef.current.value = '';
+    if (passwordRef.current) passwordRef.current.value = '';
+    if (websiteRef.current) websiteRef.current.value = '';
+    if (notesRef.current) notesRef.current.value = '';
+  };
 
-return(
-<Card>
+  const handleGeneratePassword = () => {
+    const newPassword = onGeneratePassword();
+    if (passwordRef.current) {
+      passwordRef.current.value = newPassword;
+    }
+  };
+
+  return (
+    <Card>
       <CardHeader>
         <CardTitle>Add New Item</CardTitle>
         <CardDescription>Save a new password or secure note</CardDescription>
@@ -50,10 +65,9 @@ return(
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
             <Input
+              ref={titleRef}
               id="title"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g., Gmail account, Bank account"
+              placeholder="e.g., Gmail account"
               required
             />
           </div>
@@ -61,9 +75,8 @@ return(
           <div className="space-y-2">
             <Label htmlFor="username">Username/Email</Label>
             <Input
+              ref={usernameRef}
               id="username"
-              value={formData.userName}
-              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
               placeholder="username@example.com"
             />
           </div>
@@ -73,10 +86,9 @@ return(
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
+                  ref={passwordRef}
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   placeholder="Enter password or generate one"
                 />
                 <Button
@@ -102,21 +114,19 @@ return(
           <div className="space-y-2">
             <Label htmlFor="website">Website URL</Label>
             <Input
+              ref={websiteRef}
               id="website"
               type="url"
-              value={formData.website}
-              onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-              placeholder="https://hereWeGo.com"
+              placeholder="https://example.com"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea
+              ref={notesRef}
               id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="Additional Imp notes..."
+              placeholder="Additional notes..."
               rows={3}
             />
           </div>
