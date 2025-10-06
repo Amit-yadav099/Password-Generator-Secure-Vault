@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
         { message: 'Invalid email or password' },
         { status: 400 }
       );
+      console.log('user is not present in the db');
     }
 
     // Check password
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
         { message: 'Invalid email or password' },
         { status: 400 }
       );
+      console.log("password is false");
     }
 
     // Create JWT token
@@ -42,7 +44,8 @@ export async function POST(request: NextRequest) {
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
-
+     
+    console.log('User Signed in successfully'); 
     return NextResponse.json({
       message: 'Login successful',
       token,

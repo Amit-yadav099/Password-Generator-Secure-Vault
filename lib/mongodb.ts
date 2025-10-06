@@ -26,6 +26,8 @@ if (!global.mongoose) {
 
 async function dbConnect() {
   if (cached.conn) {
+    // already db is connected
+    console.log('mongodb is already connected');
     return cached.conn;
   }
 
@@ -35,12 +37,15 @@ async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts);
+
   }
 
   try {
     cached.conn = await cached.promise;
+    console.log('Database connected successfully');
   } catch (e) {
     cached.promise = null;
+    console.error('Database connection failed:', e);
     throw e;
   }
 
