@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IUser extends Document {
   email: string;
   password: string;
+  encryptedVaultKey: string; // New field
   createdAt: Date;
 }
 
@@ -18,6 +19,10 @@ const UserSchema: Schema = new Schema({
     type: String,
     required: [true, 'Please provide a password'],
     minlength: 6,
+  },
+  encryptedVaultKey: {
+    type: String,
+    required: true,
   },
   createdAt: {
     type: Date,

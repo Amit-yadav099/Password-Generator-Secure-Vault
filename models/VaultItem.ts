@@ -2,11 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IVaultItem extends Document {
   userId: mongoose.Types.ObjectId;
-  title: string;
-  username?: string;
+  encryptedTitle: string;
+  encryptedUsername?: string;
   encryptedPassword: string;
-  website?: string;
-  notes?: string;
+  encryptedWebsite?: string;
+  encryptedNotes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,29 +17,28 @@ const VaultItemSchema: Schema = new Schema({
     ref: 'User',
     required: true,
   },
-  title: {
+  encryptedTitle: {
     type: String,
-    required: [true, 'Please provide a title'],
-    trim: true,
+    required: true,
   },
-  username: {
+  encryptedUsername: {
     type: String,
-    trim: true,
   },
   encryptedPassword: {
     type: String,
     required: true,
   },
-  website: {
+  encryptedWebsite: {
     type: String,
-    trim: true,
   },
-  notes: {
+  encryptedNotes: {
     type: String,
-    trim: true,
   },
 }, {
   timestamps: true,
 });
+
+// Create index for better query performance
+VaultItemSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.models.VaultItem || mongoose.model<IVaultItem>('VaultItem', VaultItemSchema);

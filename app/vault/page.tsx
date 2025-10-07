@@ -8,8 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import PasswordGenerator from '@/components/PasswordGenerator';
 import VaultItemForm from '@/components/VaultItemForm';
 import VaultItemCard from '@/components/VaultItemCard';
-import { Search, LogOut, Shield } from 'lucide-react';
+import { Search, LogOut, Shield, RefreshCw, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import { VaultEncryption } from '@/lib/encryption';
+import { PasswordManager } from '@/lib/passwordManager';
 
 interface VaultItem {
   id: string;
@@ -21,110 +23,302 @@ interface VaultItem {
   createdAt: string;
 }
 
-// Custom hook for vault persistence
-const useVaultStorage = () => {
-  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
-
-  // Load from localStorage on initial render
-  useEffect(() => {
-    const savedItems = localStorage.getItem('vaultItems');
-    if (savedItems) {
-      try {
-        setVaultItems(JSON.parse(savedItems));
-      } catch (error) {
-        console.error('Error parsing vault items:', error);
-      }
-    }
-  }, []);
-
-  // Save to localStorage whenever vaultItems change
-  const updateVaultItems = (newItems: VaultItem[]) => {
-    setVaultItems(newItems);
-    localStorage.setItem('vaultItems', JSON.stringify(newItems));
-  };
-
-  const handleSaveItem = (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
-    const newItem: VaultItem = {
-      ...itemData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
-    updateVaultItems([newItem, ...vaultItems]);
-    toast.success('Item saved to vault!');
-  };
-
-  const handleEditItem = (id: string, updates: Partial<VaultItem>) => {
-    const updatedItems = vaultItems.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    );
-    updateVaultItems(updatedItems);
-    toast.success('Item updated!');
-  };
-
-  const handleDeleteItem = (id: string) => {
-    const filteredItems = vaultItems.filter(item => item.id !== id);
-    updateVaultItems(filteredItems);
-    toast.success('Item deleted!');
-  };
-
-  return {
-    vaultItems,
-    handleSaveItem,
-    handleEditItem,
-    handleDeleteItem
-  };
-};
+interface EncryptedVaultItem {
+  id: string;
+  encryptedTitle: string;
+  encryptedUsername?: string;
+  encryptedPassword: string;
+  encryptedWebsite?: string;
+  encryptedNotes?: string;
+  createdAt: string;
+}
 
 export default function VaultPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
-  
-  // Use the persistent storage hook
-  const { 
-    vaultItems, 
-    handleSaveItem, 
-    handleEditItem, 
-    handleDeleteItem 
-  } = useVaultStorage();
 
-  // Check authentication - FIXED: All hooks declared at top level
+  // Check authentication and get user info
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    console.log('Token found:', token);
+    const storedEmail = sessionStorage.getItem('userEmail');
+    const hasPassword = PasswordManager.hasPassword();
+    
     if (!token) {
-      console.log('Token is not present');
+      console.log('No auth token found');
       router.push('/auth');
+      return;
+    }
+
+    if (storedEmail && hasPassword) {
+      setUserEmail(storedEmail);
+      loadVaultItems(storedEmail);
     } else {
-      setIsLoading(false);
+      // Password not available - need to re-authenticate
+      console.log('Password not available, redirecting to auth');
+      PasswordManager.clearPassword();
+      router.push('/auth');
     }
   }, [router]);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
+  const loadVaultItems = async (email: string) => {
+    const password = PasswordManager.getPassword();
+    if (!password) {
+      toast.error('Authentication required');
+      router.push('/auth');
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      setIsRefreshing(true);
+      const response = await fetch('/api/vault/items', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load vault items');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.items) {
+        const decryptedItems: VaultItem[] = [];
+        let decryptionErrors = 0;
+        
+        for (const item of data.items) {
+          try {
+            const decryptedItem: VaultItem = {
+              id: item.id,
+              title: VaultEncryption.decryptData(item.encryptedTitle, email, password),
+              username: item.encryptedUsername ? 
+                VaultEncryption.decryptData(item.encryptedUsername, email, password) : undefined,
+              password: VaultEncryption.decryptData(item.encryptedPassword, email, password),
+              website: item.encryptedWebsite ? 
+                VaultEncryption.decryptData(item.encryptedWebsite, email, password) : undefined,
+              notes: item.encryptedNotes ? 
+                VaultEncryption.decryptData(item.encryptedNotes, email, password) : undefined,
+              createdAt: item.createdAt
+            };
+            decryptedItems.push(decryptedItem);
+          } catch (decryptError) {
+            console.error(`Failed to decrypt item ${item.id}:`, decryptError);
+            decryptionErrors++;
+          }
+        }
+        
+        setVaultItems(decryptedItems);
+        if (decryptionErrors > 0) {
+          toast.warning(`${decryptionErrors} items could not be decrypted`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading vault items:', error);
+      toast.error('Failed to load vault items');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleSaveItem = async (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
+    const email = sessionStorage.getItem('userEmail');
+    const password = PasswordManager.getPassword();
+    
+    if (!email || !password) {
+      toast.error('Authentication required');
+      router.push('/auth');
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      // Encrypt all data before sending to server
+      const encryptedData = {
+        encryptedTitle: VaultEncryption.encryptData(itemData.title, email, password),
+        encryptedUsername: itemData.username ? 
+          VaultEncryption.encryptData(itemData.username, email, password) : undefined,
+        encryptedPassword: VaultEncryption.encryptData(itemData.password, email, password),
+        encryptedWebsite: itemData.website ? 
+          VaultEncryption.encryptData(itemData.website, email, password) : undefined,
+        encryptedNotes: itemData.notes ? 
+          VaultEncryption.encryptData(itemData.notes, email, password) : undefined,
+      };
+
+      const response = await fetch('/api/vault/items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(encryptedData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save item');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add the new item to local state (decrypted)
+        const newItem: VaultItem = {
+          ...itemData,
+          id: data.item.id,
+          createdAt: data.item.createdAt
+        };
+        
+        setVaultItems(prev => [newItem, ...prev]);
+        toast.success('Item saved to vault!');
+      }
+    } catch (error: any) {
+      console.error('Error saving item:', error);
+      toast.error(error.message || 'Failed to save item');
+    }
+  };
+
+  const handleEditItem = async (id: string, updates: Partial<VaultItem>) => {
+    const email = sessionStorage.getItem('userEmail');
+    const password = PasswordManager.getPassword();
+    
+    if (!email || !password) {
+      toast.error('Authentication required');
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      // Encrypt updated data before sending to server
+      const encryptedUpdates: any = {};
+      
+      if (updates.title !== undefined) {
+        encryptedUpdates.encryptedTitle = VaultEncryption.encryptData(updates.title, email, password);
+      }
+      if (updates.username !== undefined) {
+        encryptedUpdates.encryptedUsername = updates.username 
+          ? VaultEncryption.encryptData(updates.username, email, password)
+          : null;
+      }
+      if (updates.password !== undefined) {
+        encryptedUpdates.encryptedPassword = VaultEncryption.encryptData(updates.password, email, password);
+      }
+      if (updates.website !== undefined) {
+        encryptedUpdates.encryptedWebsite = updates.website 
+          ? VaultEncryption.encryptData(updates.website, email, password)
+          : null;
+      }
+      if (updates.notes !== undefined) {
+        encryptedUpdates.encryptedNotes = updates.notes 
+          ? VaultEncryption.encryptData(updates.notes, email, password)
+          : null;
+      }
+
+      const response = await fetch(`/api/vault/items/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(encryptedUpdates)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update item');
+      }
+
+      // Update local state
+      setVaultItems(prev => 
+        prev.map(item => item.id === id ? { ...item, ...updates } : item)
+      );
+    } catch (error: any) {
+      console.error('Error updating item:', error);
+      throw new Error(error.message || 'Failed to update item');
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/vault/items/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete item');
+      }
+
+      // Remove from local state
+      setVaultItems(prev => prev.filter(item => item.id !== id));
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      throw new Error(error.message || 'Failed to delete item');
+    }
+  };
 
   const handleGeneratePassword = () => {
     return generatedPassword;
   };
 
+  const handleRefresh = () => {
+    const email = sessionStorage.getItem('userEmail');
+    if (email) {
+      loadVaultItems(email);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('authToken');
-    localStorage.removeItem('vaultItems'); // Optional: clear vault data on logout
+    sessionStorage.removeItem('userEmail');
+    PasswordManager.clearPassword(); // Clear the encrypted password
     router.push('/auth');
   };
 
   const filteredItems = vaultItems.filter(item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.website?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.website?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.notes?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading your secure vault...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -139,14 +333,29 @@ export default function VaultPage() {
                   Secure Vault
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Your passwords are safe with us
+                  End-to-end encrypted with your credentials
                 </p>
               </div>
             </div>
-            <Button onClick={handleLogout} variant="outline">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <Key className="h-4 w-4" />
+                <span>Stable Encryption</span>
+              </div>
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                size="sm"
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button onClick={handleLogout} variant="outline">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -156,6 +365,7 @@ export default function VaultPage() {
           {/* Left Column - Generator & Add Form */}
           <div className="lg:col-span-1 space-y-6">
             <PasswordGenerator onPasswordGenerate={setGeneratedPassword} />
+            
             <VaultItemForm 
               onSave={handleSaveItem}
               onGeneratePassword={handleGeneratePassword}
@@ -168,20 +378,22 @@ export default function VaultPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold">Your Vault</h2>
+                    <h2 className="text-2xl font-bold">Your Encrypted Vault</h2>
                     <p className="text-slate-600 dark:text-slate-400">
-                      {vaultItems.length} saved items
+                      {vaultItems.length} secure items • Stable encryption key
                     </p>
                   </div>
                   
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Search vault..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Search vault..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -189,9 +401,14 @@ export default function VaultPage() {
                   {filteredItems.length === 0 ? (
                     <div className="text-center py-12">
                       <Shield className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No items found</h3>
+                      <h3 className="text-lg font-semibold mb-2">
+                        {vaultItems.length === 0 ? 'Your vault is empty' : 'No matching items found'}
+                      </h3>
                       <p className="text-slate-500">
-                        {searchTerm ? 'Try adjusting your search terms' : 'Start by adding your first password'}
+                        {vaultItems.length === 0 
+                          ? 'Add your first password using the form on the left'
+                          : 'Try adjusting your search terms'
+                        }
                       </p>
                     </div>
                   ) : (

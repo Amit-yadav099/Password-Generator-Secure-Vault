@@ -9,6 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
+// import CryptoJS from 'crypto-js';
+import { PasswordManager } from '@/lib/passwordManager';
+import { VaultEncryption } from '@/lib/encryption';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -20,55 +23,73 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+  try {
+    const res = await fetch('/api/auth/signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Signup failed');
-      }
+    if (!res.ok) throw new Error(data.message || 'signup failed');
 
-      toast.success('Account created successfully!');
-      localStorage.setItem('authToken', data.token);
-      router.push('/vault');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
-    } finally {
-      setLoading(false);
+    // Test encryption before proceeding
+    const encryptionWorks = VaultEncryption.testEncryption(email, password);
+    if (!encryptionWorks) {
+      throw new Error('Encryption setup failed. Please try again.');
     }
-  };
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    toast.success('signed up successfully!');
+    
+    // Store credentials securely
+    localStorage.setItem('authToken', data.token);
+    sessionStorage.setItem('userEmail', email);
+    PasswordManager.storePassword(password); // Securely store password
+    
+    router.push('/vault');
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to signed up');
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+const handleSignIn = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-      const data = await res.json();
+  try {
+    const res = await fetch('/api/auth/signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
+    const data = await res.json();
 
-      toast.success('Logged in successfully!');
-      localStorage.setItem('authToken', data.token);
-      router.push('/vault');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to sign in');
-    } finally {
-      setLoading(false);
+    if (!res.ok) throw new Error(data.message || 'Login failed');
+
+    // Test encryption before proceeding
+    const encryptionWorks = VaultEncryption.testEncryption(email, password);
+    if (!encryptionWorks) {
+      throw new Error('Encryption setup failed. Please try again.');
     }
-  };
+
+    toast.success('Logged in successfully!');
+    
+    // Store credentials securely
+    localStorage.setItem('authToken', data.token);
+    sessionStorage.setItem('userEmail', email);
+    PasswordManager.storePassword(password); // Securely store password
+    
+    router.push('/vault');
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to sign in');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
