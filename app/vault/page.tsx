@@ -12,6 +12,7 @@ import { Search, LogOut, Shield, RefreshCw, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { VaultEncryption } from '@/lib/encryption';
 import { PasswordManager } from '@/lib/passwordManager';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface VaultItem {
   id: string;
@@ -323,42 +324,43 @@ export default function VaultPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  Secure Vault
-                </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  End-to-end encrypted with your credentials
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <Key className="h-4 w-4" />
-                <span>Stable Encryption</span>
-              </div>
-              <Button 
-                onClick={handleRefresh} 
-                variant="outline" 
-                size="sm"
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button onClick={handleLogout} variant="outline">
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
+<header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+   <div className="container mx-auto px-4 py-4">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Shield className="h-8 w-8 text-blue-600" />
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Secure Vault
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            End-to-end encrypted with your credentials
+          </p>
         </div>
-      </header>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+          <Key className="h-4 w-4" />
+          <span>Stable Encryption</span>
+        </div>
+        <ThemeToggle />
+        <Button 
+          onClick={handleRefresh} 
+          variant="outline" 
+          size="sm"
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        <Button onClick={handleLogout} variant="outline">
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
+    </div>
+  </div>
+</header>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

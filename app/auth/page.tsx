@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
-// import CryptoJS from 'crypto-js';
 import { PasswordManager } from '@/lib/passwordManager';
 import { VaultEncryption } from '@/lib/encryption';
 
@@ -24,7 +23,7 @@ export default function AuthPage() {
     setLoading(true);
 
   try {
-    const res = await fetch('/api/auth/signin', {
+    const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -41,7 +40,7 @@ export default function AuthPage() {
     }
 
     toast.success('signed up successfully!');
-    
+    console.log('signed up successfully'); 
     // Store credentials securely
     localStorage.setItem('authToken', data.token);
     sessionStorage.setItem('userEmail', email);

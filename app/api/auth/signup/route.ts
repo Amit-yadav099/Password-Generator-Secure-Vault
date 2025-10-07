@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,10 +39,14 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Generate a random encryptedVaultKey (32-byte hex string)
+    const encryptedVaultKey = crypto.randomBytes(32).toString('hex');
+
     // Create user
     const user = await User.create({
       email,
       password: hashedPassword,
+      encryptedVaultKey,
     });
 
     // Create JWT token

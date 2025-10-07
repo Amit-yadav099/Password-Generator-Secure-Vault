@@ -1,13 +1,13 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IUser extends Document {
   email: string;
   password: string;
-  encryptedVaultKey: string; // New field
+  encryptedVaultKey: string;
   createdAt: Date;
 }
 
-const UserSchema: Schema = new Schema({
+const UserSchema: Schema<IUser> = new Schema({
   email: {
     type: String,
     required: [true, 'Please provide an email'],
@@ -28,6 +28,10 @@ const UserSchema: Schema = new Schema({
     type: Date,
     default: Date.now,
   },
-});
+})
 
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+// ✅ Type-safe model initialization
+const User: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+
+export default User

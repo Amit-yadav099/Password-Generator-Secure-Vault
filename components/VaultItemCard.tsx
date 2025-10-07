@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Copy, Eye, EyeOff, Edit, Trash2, Check, X, Save } from 'lucide-react';
+import { Copy, Eye, EyeOff, Edit, Trash2, Check, X, Save, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { ClipboardManager } from '@/lib/clipboard';
 
 interface VaultItem {
   id: string;
@@ -30,21 +31,37 @@ export default function VaultItemCard({ item, onEdit, onDelete }: VaultItemCardP
   const [isLoading, setIsLoading] = useState(false);
   const [editData, setEditData] = useState(item);
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyTimer, setCopyTimer] = useState<number | null>(null);
 
   // Reset edit data when item changes
   useEffect(() => {
     setEditData(item);
   }, [item]);
 
+  // Timer countdown effect
+  useEffect(() => {
+    if (copyTimer !== null && copyTimer > 0) {
+      const timer = setTimeout(() => {
+        setCopyTimer(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (copyTimer === 0) {
+      setCopied(null);
+      setCopyTimer(null);
+    }
+  }, [copyTimer]);
+
   const copyToClipboard = async (text: string, type: string) => {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(type);
-      toast.success(`${type} copied to clipboard!`);
+      const success = await ClipboardManager.copyWithAutoClear(text, type, 15000);
       
-      setTimeout(() => {
-        setCopied(null);
-      }, 2000);
+      if (success) {
+        setCopied(type);
+        setCopyTimer(15); // 15 seconds countdown
+        toast.success(`${type} copied to clipboard! Auto-clearing in 15 seconds.`);
+      } else {
+        throw new Error('Copy failed');
+      }
     } catch (err) {
       toast.error('Failed to copy to clipboard');
     }
@@ -228,10 +245,22 @@ export default function VaultItemCard({ item, onEdit, onDelete }: VaultItemCardP
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => copyToClipboard(item.username!, 'Username')}
+                onClick={() => copyToClipboard(item.username!, 'username')}
                 disabled={isLoading}
+                className="relative"
               >
-                {copied === 'username' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied === 'username' ? (
+                  <div className="flex items-center">
+                    <Check className="h-4 w-4" />
+                    {copyTimer !== null && (
+                      <span className="absolute -top-1 -right-1 text-xs bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                        {copyTimer}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -259,10 +288,22 @@ export default function VaultItemCard({ item, onEdit, onDelete }: VaultItemCardP
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => copyToClipboard(item.password, 'Password')}
+                  onClick={() => copyToClipboard(item.password, 'password')}
                   disabled={isLoading}
+                  className="relative"
                 >
-                  {copied === 'password' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied === 'password' ? (
+                    <div className="flex items-center">
+                      <Check className="h-4 w-4" />
+                      {copyTimer !== null && (
+                        <span className="absolute -top-1 -right-1 text-xs bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                          {copyTimer}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
