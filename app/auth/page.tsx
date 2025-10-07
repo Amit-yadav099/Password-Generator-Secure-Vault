@@ -8,15 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Lock } from 'lucide-react';
+import { Lock, Moon, Sun } from 'lucide-react';
 import { PasswordManager } from '@/lib/passwordManager';
 import { VaultEncryption } from '@/lib/encryption';
+import { useTheme } from 'next-themes';
 
 export default function AuthPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+   const { theme, setTheme } = useTheme();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,8 +92,29 @@ const handleSignIn = async (e: React.FormEvent) => {
   }
 };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
+   return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 relative">
+      {/* Theme Toggle - Top Right Corner */}
+      <div className="absolute top-6 right-6">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleTheme}
+          className="rounded-full w-10 h-10"
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? (
+            <Moon className="h-4 w-4" />
+          ) : (
+            <Sun className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
