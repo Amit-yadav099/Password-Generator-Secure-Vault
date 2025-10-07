@@ -17,48 +17,47 @@
 
 A privacy-first, end-to-end encrypted password manager built with Next.js, TypeScript, and MongoDB. Your sensitive data is encrypted client-side before it ever reaches the server.
 
-
 ## <a name="features">🔋 Features</a>
 
 🔒 Security First
 
- **Client-Side Encryption** : All data encrypted before sending to server
+ - **Client-Side Encryption** : All data encrypted before sending to server
 
-**Zero-Knowledge Architecture** : Server only stores encrypted blobs
+- **Zero-Knowledge Architecture** : Server only stores encrypted blobs
 
-**Stable Encryption Keys** : Derived from user credentials (email + password)
+- **Stable Encryption Keys** : Derived from user credentials (email + password)
 
-**Secure Clipboard** : Auto-clears copied passwords after 15 seconds
+- **Secure Clipboard** : Auto-clears copied passwords after 15 seconds
 
-**No Secrets in Logs** : Comprehensive security practices
+- **No Secrets in Logs** : Comprehensive security practices
 
 
 ## <a name="CoreFunctionality">🎯 Core Functionality</a>
 
 
-**Strong Password Generator** : Customizable length and character sets
+- **Strong Password Generator** : Customizable length and character sets
 
-**Secure Vault Storage** : Save passwords with titles, usernames, URLs, and notes
+- **Secure Vault Storage** : Save passwords with titles, usernames, URLs, and notes
 
-**Full CRUD Operations** : Create, read, update, and delete vault items
+- **Full CRUD Operations** : Create, read, update, and delete vault items
 
-**Real-time Search** : Instant search across all vault items
+- **Real-time Search** : Instant search across all vault items
 
-**Copy to Clipboard** : One-click copying with security timers
+- **Copy to Clipboard** : One-click copying with security timers
 
 
 ## <a name="UserExperience">🎨 User Experience</a>
 
 
-**Dark/Light Mode** : System preference detection with manual toggle
+- **Dark/Light Mode** : System preference detection with manual toggle
 
-**Responsive Design** : Works perfectly on desktop and mobile
+- **Responsive Design** : Works perfectly on desktop and mobile
 
-**Password Strength Meter** : Visual feedback on generated passwords
+- **Password Strength Meter** : Visual feedback on generated passwords
 
-**Loading States** : Smooth user experience with proper feedback
+- **Loading States** : Smooth user experience with proper feedback
 
-**Modern UI** : Clean, minimal interface using shadcn/ui components
+- **Modern UI** : Clean, minimal interface using shadcn/ui components
 
 ## <a name="Tech Stack">🛠 Tech Stack</a>
 
@@ -92,9 +91,9 @@ A privacy-first, end-to-end encrypted password manager built with Next.js, TypeS
 
   - PBKDF2 - Key derivation from user credentials
 
+
 ## <a name="quick-start">🤸 Quick Start</a>
 
-npm or yarn
 
 Installation
 Clone the repository
@@ -131,7 +130,8 @@ Open your browser
 
 Navigate to http://localhost:3000
 
-## <a name="quick-start">🤸 Quick Start</a>
+
+## <a name="securityImplementation">🔐 Security Implementation</a>
 
 
 Encryption Details
@@ -200,9 +200,12 @@ const encrypted = CryptoJS.AES.encrypt(data, key,
 
 - Open a Pull Request
 
+<br>
+<br/>
 
 **Final Note** :
 
-🔒 Your Passwords Are Safe With Us - All encryption happens in your browser, ensuring maximum privacy and security.
+🔒 Your Passwords Are Safe With Us 
+-  All encryption happens in your browser, ensuring maximum privacy and security.
 
 
