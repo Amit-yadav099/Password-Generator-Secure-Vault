@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,49 +24,16 @@ interface VaultItem {
   createdAt: string;
 }
 
-interface EncryptedVaultItem {
-  id: string;
-  encryptedTitle: string;
-  encryptedUsername?: string;
-  encryptedPassword: string;
-  encryptedWebsite?: string;
-  encryptedNotes?: string;
-  createdAt: string;
-}
-
 export default function VaultPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
 
-  // Check authentication and get user info
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const storedEmail = sessionStorage.getItem('userEmail');
-    const hasPassword = PasswordManager.hasPassword();
-    
-    if (!token) {
-      console.log('No auth token found');
-      router.push('/auth');
-      return;
-    }
-
-    if (storedEmail && hasPassword) {
-      setUserEmail(storedEmail);
-      loadVaultItems(storedEmail);
-    } else {
-      // Password not available - need to re-authenticate
-      console.log('Password not available, redirecting to auth');
-      PasswordManager.clearPassword();
-      router.push('/auth');
-    }
-  }, [router]);
-
-  const loadVaultItems = async (email: string) => {
+  // Load vault items function with useCallback to fix dependency issue
+  const loadVaultItems = useCallback(async (email: string) => {
     const password = PasswordManager.getPassword();
     if (!password) {
       toast.error('Authentication required');
@@ -124,14 +91,36 @@ export default function VaultPage() {
           toast.warning(`${decryptionErrors} items could not be decrypted`);
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading vault items:', error);
-      toast.error('Failed to load vault items');
+      const message = error instanceof Error ? error.message : 'Failed to load vault items';
+      toast.error(message);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [router]);
+
+  // Check authentication and get user info
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const storedEmail = sessionStorage.getItem('userEmail');
+    const hasPassword = PasswordManager.hasPassword();
+    
+    if (!token) {
+      console.log('No auth token found');
+      router.push('/auth');
+      return;
+    }
+
+    if (storedEmail && hasPassword) {
+      loadVaultItems(storedEmail);
+    } else {
+      console.log('Password not available, redirecting to auth');
+      PasswordManager.clearPassword();
+      router.push('/auth');
+    }
+  }, [router, loadVaultItems]);
 
   const handleSaveItem = async (itemData: Omit<VaultItem, 'id' | 'createdAt'>) => {
     const email = sessionStorage.getItem('userEmail');
@@ -179,7 +168,6 @@ export default function VaultPage() {
       const data = await response.json();
       
       if (data.success) {
-        // Add the new item to local state (decrypted)
         const newItem: VaultItem = {
           ...itemData,
           id: data.item.id,
@@ -189,9 +177,10 @@ export default function VaultPage() {
         setVaultItems(prev => [newItem, ...prev]);
         toast.success('Item saved to vault!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save item';
       console.error('Error saving item:', error);
-      toast.error(error.message || 'Failed to save item');
+      toast.error(message);
     }
   };
 
@@ -212,7 +201,7 @@ export default function VaultPage() {
 
     try {
       // Encrypt updated data before sending to server
-      const encryptedUpdates: any = {};
+      const encryptedUpdates: Record<string, string | null> = {};
       
       if (updates.title !== undefined) {
         encryptedUpdates.encryptedTitle = VaultEncryption.encryptData(updates.title, email, password);
@@ -250,13 +239,13 @@ export default function VaultPage() {
         throw new Error(errorData.message || 'Failed to update item');
       }
 
-      // Update local state
       setVaultItems(prev => 
         prev.map(item => item.id === id ? { ...item, ...updates } : item)
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating item:', error);
-      throw new Error(error.message || 'Failed to update item');
+      const message = error instanceof Error ? error.message : 'Failed to update item';
+      throw new Error(message);
     }
   };
 
@@ -280,11 +269,11 @@ export default function VaultPage() {
         throw new Error(errorData.message || 'Failed to delete item');
       }
 
-      // Remove from local state
       setVaultItems(prev => prev.filter(item => item.id !== id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting item:', error);
-      throw new Error(error.message || 'Failed to delete item');
+      const message = error instanceof Error ? error.message : 'Failed to delete item';
+      throw new Error(message);
     }
   };
 
@@ -302,7 +291,7 @@ export default function VaultPage() {
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     sessionStorage.removeItem('userEmail');
-    PasswordManager.clearPassword(); // Clear the encrypted password
+    PasswordManager.clearPassword();
     router.push('/auth');
   };
 
@@ -323,58 +312,54 @@ export default function VaultPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-<header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-   <div className="container mx-auto px-4 py-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <Shield className="h-8 w-8 text-blue-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Secure Vault
-          </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            End-to-end encrypted with your credentials
-          </p>
+      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  Secure Vault
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  End-to-end encrypted with your credentials
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <Key className="h-4 w-4" />
+                <span>Stable Encryption</span>
+              </div>
+              <ThemeToggle />
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                size="sm"
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button onClick={handleLogout} variant="outline">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-          <Key className="h-4 w-4" />
-          <span>Stable Encryption</span>
-        </div>
-        <ThemeToggle />
-        <Button 
-          onClick={handleRefresh} 
-          variant="outline" 
-          size="sm"
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-        <Button onClick={handleLogout} variant="outline">
-          <LogOut className="h-4 w-4 mr-2" />
-          Logout
-        </Button>
-      </div>
-    </div>
-  </div>
-</header>
+      </header>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Generator & Add Form */}
           <div className="lg:col-span-1 space-y-6">
             <PasswordGenerator onPasswordGenerate={setGeneratedPassword} />
-            
             <VaultItemForm 
               onSave={handleSaveItem}
               onGeneratePassword={handleGeneratePassword}
             />
           </div>
 
-          {/* Right Column - Vault Items */}
           <div className="lg:col-span-2">
             <Card>
               <CardContent className="p-6">

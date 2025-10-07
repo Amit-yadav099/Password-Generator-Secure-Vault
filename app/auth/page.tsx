@@ -49,8 +49,9 @@ export default function AuthPage() {
     PasswordManager.storePassword(password); // Securely store password
     
     router.push('/vault');
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to signed up');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'An error occurred failed in sign up';
+    toast.error(message || 'Failed to signed up');
   } finally {
     setLoading(false);
   }
@@ -85,8 +86,9 @@ const handleSignIn = async (e: React.FormEvent) => {
     PasswordManager.storePassword(password); // Securely store password
     
     router.push('/vault');
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to sign in');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'An error occurred failed in sign in';
+    toast.error(message || 'Failed to sign in');
   } finally {
     setLoading(false);
   }
