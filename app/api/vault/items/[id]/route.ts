@@ -25,7 +25,7 @@ function getUserIdFromToken(request: NextRequest): string | null {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>}
 ) {
   try {
     await dbConnect();
@@ -34,6 +34,8 @@ export async function PUT(
     if (!userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+     const { id } = await params;
 
     const body = await request.json();
     const {
@@ -46,7 +48,7 @@ export async function PUT(
 
     // Find the item and verify ownership
     const existingItem = await VaultItem.findOne({ 
-      _id: params.id, 
+      _id:id, 
       userId 
     });
 
@@ -59,7 +61,7 @@ export async function PUT(
 
     // Update the item
     const updatedItem = await VaultItem.findByIdAndUpdate(
-      params.id,
+      id,
       {
         encryptedTitle,
         encryptedUsername,
@@ -96,7 +98,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>}
 ) {
   try {
     await dbConnect();
@@ -106,9 +108,11 @@ export async function DELETE(
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Find the item and verify ownership
     const existingItem = await VaultItem.findOne({ 
-      _id: params.id, 
+      _id:id, 
       userId 
     });
 
@@ -120,7 +124,7 @@ export async function DELETE(
     }
 
     // Delete the item
-    await VaultItem.findByIdAndDelete(params.id);
+    await VaultItem.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
+import { IUser } from './User';
 
 export interface IVaultItem extends Document {
   userId: mongoose.Types.ObjectId;
@@ -11,7 +12,7 @@ export interface IVaultItem extends Document {
   updatedAt: Date;
 }
 
-const VaultItemSchema: Schema = new Schema({
+const VaultItemSchema: Schema<IVaultItem> = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -41,4 +42,6 @@ const VaultItemSchema: Schema = new Schema({
 // Create index for better query performance
 VaultItemSchema.index({ userId: 1, createdAt: -1 });
 
-export default mongoose.models.VaultItem || mongoose.model<IVaultItem>('VaultItem', VaultItemSchema);
+
+const VaultItem: Model<IVaultItem>=mongoose.models.VaultItem || mongoose.model<IVaultItem>('VaultItem', VaultItemSchema)
+export default VaultItem
