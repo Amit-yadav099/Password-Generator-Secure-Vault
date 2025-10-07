@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import PasswordGenerator from '@/components/PasswordGenerator';
+import PasswordGenerator from '@/components/passwordGenerator';
 import VaultItemForm from '@/components/VaultItemForm';
 import VaultItemCard from '@/components/VaultItemCard';
 import { Search, LogOut, Shield, RefreshCw, Key } from 'lucide-react';
