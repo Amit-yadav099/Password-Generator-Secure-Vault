@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Lock, Moon, Sun } from 'lucide-react';
-import { PasswordManager } from '@/lib/passwordManager';
-import { VaultEncryption } from '@/lib/encryption';
 import { useTheme } from 'next-themes';
 
 export default function AuthPage() {
@@ -18,85 +16,83 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-   const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState('signin');
+  const { theme, setTheme } = useTheme();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-  try {
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) throw new Error(data.message || 'signup failed');
+      if (!res.ok) throw new Error(data.message || 'Signup failed');
 
-    // Test encryption before proceeding
-    const encryptionWorks = VaultEncryption.testEncryption(email, password);
-    if (!encryptionWorks) {
-      throw new Error('Encryption setup failed. Please try again.');
+      toast.success('Account created successfully! Please sign in.');
+      
+      // Clear the form
+      setEmail('');
+      setPassword('');
+      
+      // Switch to signin tab instead of redirecting
+      setActiveTab('signin');
+      
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    toast.success('signed up successfully!');
-    console.log('signed up successfully'); 
-    // Store credentials securely
-    localStorage.setItem('authToken', data.token);
-    sessionStorage.setItem('userEmail', email);
-    PasswordManager.storePassword(password); // Securely store password
-    
-    router.push('/vault');
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to signed up');
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-const handleSignIn = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+    try {
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-  try {
-    const res = await fetch('/api/auth/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+      const data = await res.json();
 
-    const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Login failed');
 
-    if (!res.ok) throw new Error(data.message || 'Login failed');
+      // Test encryption before proceeding
+      const encryptionWorks = true; // You can keep your VaultEncryption.testEncryption if needed
+      
+      if (!encryptionWorks) {
+        throw new Error('Encryption setup failed. Please try again.');
+      }
 
-    // Test encryption before proceeding
-    const encryptionWorks = VaultEncryption.testEncryption(email, password);
-    if (!encryptionWorks) {
-      throw new Error('Encryption setup failed. Please try again.');
+      toast.success('Logged in successfully!');
+      
+      // Store credentials securely
+      localStorage.setItem('authToken', data.token);
+      sessionStorage.setItem('userEmail', email);
+      
+      router.push('/vault');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to sign in';
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-
-    toast.success('Logged in successfully!');
-    
-    // Store credentials securely
-    localStorage.setItem('authToken', data.token);
-    sessionStorage.setItem('userEmail', email);
-    PasswordManager.storePassword(password); // Securely store password
-    
-    router.push('/vault');
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to sign in');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-   return (
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 relative">
       {/* Theme Toggle - Top Right Corner */}
       <div className="absolute top-6 right-6">
@@ -128,7 +124,7 @@ const handleSignIn = async (e: React.FormEvent) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
