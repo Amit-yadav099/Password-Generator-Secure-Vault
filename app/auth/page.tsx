@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Lock, Moon, Sun } from 'lucide-react';
+import { PasswordManager } from '@/lib/passwordManager';
+import { VaultEncryption } from '@/lib/encryption';
 import { useTheme } from 'next-themes';
 
 export default function AuthPage() {
@@ -33,13 +35,22 @@ export default function AuthPage() {
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.message || 'Signup failed');
+     
+      // Test encryption before proceeding
+    const encryptionWorks = VaultEncryption.testEncryption(email, password);
+     if (!encryptionWorks) {
+      throw new Error('Encryption setup failed. Please try again.');
+     }
 
       toast.success('Account created successfully! Please sign in.');
       
       // Clear the form
       setEmail('');
       setPassword('');
-      
+    localStorage.setItem('authToken', data.token);
+    sessionStorage.setItem('userEmail', email);
+    PasswordManager.storePassword(password);
+
       // Switch to signin tab instead of redirecting
       setActiveTab('signin');
       
@@ -67,17 +78,17 @@ export default function AuthPage() {
       if (!res.ok) throw new Error(data.message || 'Login failed');
 
       // Test encryption before proceeding
-      const encryptionWorks = true; // You can keep your VaultEncryption.testEncryption if needed
-      
-      if (!encryptionWorks) {
-        throw new Error('Encryption setup failed. Please try again.');
-      }
+       const encryptionWorks = VaultEncryption.testEncryption(email, password);
+    if (!encryptionWorks) {
+      throw new Error('Encryption setup failed. Please try again.');
+    }
 
       toast.success('Logged in successfully!');
       
       // Store credentials securely
-      localStorage.setItem('authToken', data.token);
-      sessionStorage.setItem('userEmail', email);
+     localStorage.setItem('authToken', data.token);
+    sessionStorage.setItem('userEmail', email);
+    PasswordManager.storePassword(password);
       
       router.push('/vault');
     } catch (error: unknown) {
